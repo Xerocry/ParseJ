@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'testParse'
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -77,11 +78,11 @@ WSGI_APPLICATION = 'parseJ.wsgi.application'
 DATABASES = {
     'default': {
     'ENGINE': 'django.db.backends.postgresql_psycopg2',
-    'NAME': 'yournewdb',
+    'NAME': 'datab',
     'USER': 'postgres',
     'PASSWORD': '65225855',
-    'HOST': '', # Set to empty string for localhost.
-    'PORT': '', # Set to empty string for default.
+    'HOST': 'localhost', # Set to empty string for localhost.
+    'PORT': '5432', # Set to empty string for default.
     }
 }
 
@@ -118,8 +119,8 @@ USE_L10N = True
 
 USE_TZ = True
 
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
-
-STATIC_URL = '/static/'
