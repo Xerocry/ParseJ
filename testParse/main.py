@@ -44,16 +44,54 @@ def wos_Parse(jdata):
             isbn=title["issn"]
         except KeyError:
             isbn = None
-        Article.objects.create(isbn=isbn, wosUid=title["UID"],
+        newArt = Article.objects.create(isbn=isbn, wosUid=title["UID"],
                                         doi=doi)
         # newArt.Authors_set.all()
         for auth in title["authors"]:
-            Authors.objects.create(name = auth["name"])
+            newAuth = Authors(name = auth["name"])
+            if not(Authors.objects.filter(name=auth["name"]).exists()):
+                    newAuth.save()
+                    newAuth.article.add(newArt)
 
-for file in glob.iglob('D:/test/**/wos*.json'):
+def spin_Parse(jdata):
+    for title in jdata:
+        try:
+            tmpDate = datetime.datetime.strptime(title["yearpubl"], "%Y")
+        except KeyError:
+            tmpDate = None
+
+
+
+
+        # try:
+        #     doi = title["codes"]["code"]["text"]
+        # except KeyError:
+        #     doi = None
+
+
+        try:
+            isbn=title["isbn"]
+        except KeyError:
+            isbn = None
+
+
+        if title["language"] == "RU":
+            lang = "Russian"
+        else:
+            lang = "English"
+        # newArt = Article.objects.create(isbn=isbn, language=lang,
+        #                                 doi=doi)
+        # newArt.Authors_set.all()
+        # for auth in title["authors"]:
+            # newAuth = Authors(name = auth["name"])
+            # if not(Authors.objects.filter(name=auth["name"]).exists()):
+                    # newAuth.save()
+                    # newAuth.article.add(newArt)
+
+for file in glob.iglob('D:/test/**/spin*.json'):
      with open(file, 'r') as data_file:
         jdata = json.load(data_file)
-        wos_Parse(jdata)
+        spin_Parse(jdata)
 
 # for file in glob.iglob('D:/test/**/spin*.json'):
 #      with open(file, 'r') as data_file:
