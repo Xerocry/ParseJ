@@ -1,6 +1,5 @@
 from django.db import models
 from datetime import datetime
-from testParse import managers
 
 # Create your models here.
 
@@ -8,6 +7,7 @@ from testParse import managers
 
 
 class Article(models.Model):
+    ArticleSource = models.CharField(max_length=200, null=True) #scopus - wos - spin
     spinId = models.IntegerField(null=True)
     scopusIdentifier = models.IntegerField(blank=True, null=True)
     doi = models.CharField(max_length=200, null=True)

@@ -78,7 +78,7 @@ WSGI_APPLICATION = 'parseJ.wsgi.application'
 DATABASES = {
     'default': {
     'ENGINE': 'django.db.backends.postgresql_psycopg2',
-    'NAME': 'datab',
+    'NAME': 'TestParse',
     'USER': 'postgres',
     'PASSWORD': '65225855',
     'HOST': 'localhost', # Set to empty string for localhost.
