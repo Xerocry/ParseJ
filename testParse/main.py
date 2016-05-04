@@ -1,14 +1,10 @@
-import glob
-import os
-from testParse import trans
+
+from testParse.dprint import dprint
 
 __author__ = 'Xerocry'
 
 from testParse.models import Authors, Article
-import json
-from datetime import datetime, timedelta
 import datetime
-import time
 
 
 def scopus_Parse(jdata):
@@ -109,9 +105,12 @@ def spin_Parse(jdata):
 #         jdata = json.load(data_file)
 #         scopus_Parse(jdata)
 
-for file in glob.iglob('D:/publication/**/wos*.json'):
-     with open(file, 'r') as data_file:
-        jdata = json.load(data_file)
-        wos_Parse(jdata)
+# for file in glob.iglob('D:/publication/**/wos*.json'):
+#      with open(file, 'r') as data_file:
+#         jdata = json.load(data_file)
+#         wos_Parse(jdata)
+
+q = Article.objects.exclude(doi__isnull=True)
+dprint(q)
 
 context = {"fields": Article.objects.all()}
