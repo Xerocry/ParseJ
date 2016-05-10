@@ -1,14 +1,53 @@
+import datetime
+from testParse.dprint import dprint
+
 __author__ = 'user'
-import testParse.models
+from testParse.models import Article, Authors, IdKeyVal
+
 
 def idSearch(id):
-    if testParse.Article.objects.filter(doi__exact=id).exists():
-        return True
-    else:
+    haveThis = Article.objects.filter(ids__value=id)
+    if not haveThis:
         return False
+    else:
+        return haveThis
 
-def makeKwargs(newObject):
-    if newObject.doi = "s":
+
+def filter1(object):
+    for title in object:
+        firstCircle = idSearch(title["doi"])
+        if type(firstCircle) == type(False):
+            print("There is no same doi")
+            args = dict()
+            if "pub_date" in title:
+                args["pubDate"] = title["pub_date"]
+            elif "pubDate" in title:
+                try:
+                    args["pubDate"] = datetime.datetime.fromtimestamp(title["pubDate"] / 1e3)
+                except OSError:
+                    args["pubDate"] = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=(title["pubDate"] / 1000))
+            elif "yearpubl" in title:
+                args["pubDate"] = datetime.datetime.strptime(title["yearpubl"], "%Y").date()
+
+            
+            firstCircle = Article.objects.filter(ArticleSource="Wos")
+
+            secondCircle = filter2(firstCircle, title["pub_date"])
+            dprint(secondCircle)
+        else:
+            print("There is doi - ", title["doi"])
+            return False
+            # dprint(trying)
+            # return True
+
+
+def filter2(queryset, pubDate):
+    for article in queryset.values():
+        print("DATE: ", datetime.datetime.strptime(pubDate, "%Y-%m-%d").date())
+        startdate = article["pubDate"] - datetime.timedelta(1*365/12)
+        enddate = startdate + datetime.timedelta(1*365/12)
+        newSet = queryset.filter(pubDate__range=[startdate, enddate])
+        return newSet
 
 
 """

@@ -1,105 +1,17 @@
-
+import glob
+import json
 from testParse.dprint import dprint
+from testParse.sort import filter1
 
 __author__ = 'Xerocry'
-
-from testParse.models import Authors, Article
-import datetime
-
-
-def scopus_Parse(jdata):
-    for title in jdata:
-        try:
-            tmpDate = datetime.datetime.fromtimestamp(title["pubDate"]/1e3)
-        except OSError:
-            tmpDate = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=(title["pubDate"]/1000))
-        newArt = Article.objects.create(ArticleSource="Scopus", pubDate=tmpDate,
-                                        scopusIdentifier=(title["scopusIntid"]),
-                                        wosUid=title["wosUid"], spinId=title["spinId"],
-                                        doi=title["doi"], language=title["language"],
-                                        sourceType = title["sourceType"])
-        newArt.save()
-        for pos, data in title["authors"].items():
-            for pos1 in data:
-
-                auth = Authors(name=pos1["name"],
-                                       position=pos, scopusId=pos1["scopusId"])
-                if not(Authors.objects.filter(name=pos1["name"], scopusId=pos1["scopusId"]).exists()):
-                    auth.save()
-                    auth.article.add(newArt)
-
-def wos_Parse(jdata):
-    for title in jdata:
-        # try:
-        tmpDate = datetime.datetime.strptime(title["pub_date"], "%Y-%m-%d").date()
-        # except OSError:
-        #     tmpDate = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=(title["pubDate"]/1000))
-        try:
-            doi = title["doi"]
-        except KeyError:
-            doi = None
-        try:
-            isbn=title["issn"]
-        except KeyError:
-            isbn = None
-        newArt = Article.objects.create(ArticleSource="Wos", isbn=isbn, wosUid=title["UID"],
-                                        doi=doi, pubDate=tmpDate)
-        # newArt.Authors_set.all()
-        for auth in title["authors"]:
-            newAuth = Authors(name = auth["name"])
-            if not(Authors.objects.filter(name=auth["name"]).exists()):
-                    newAuth.save()
-                    newAuth.article.add(newArt)
-
-def spin_Parse(jdata):
-    for title in jdata:
-        try:
-            tmpDate = datetime.datetime.strptime(title["yearpubl"], "%Y").date()
-        except KeyError:
-            tmpDate = None
-
-        try:
-            if isinstance(title["codes"]["code"], dict):
-                doi = title["codes"]["code"]["text"]
-            else:
-                doi = None
-        except KeyError:
-            doi = None
-
-        try:
-            isbn=title["isbn"]
-        except KeyError:
-            isbn = None
-
-        if title["language"] == "RU":
-            lang = "Russian"
-        else:
-            lang = "English"
-
-        newArt = Article.objects.create(ArticleSource="Spin", isbn=isbn, language=lang, pubDate=tmpDate, doi=doi)
-        for auth1 in title["authors"]["author"]:
-            if isinstance(auth1, dict):
-                try:
-                    newAuth = Authors(name=auth1["lastname"]+" "+auth1["initials"])
-                except KeyError:
-                    newAuth = Authors(name=auth1["lastname"])
-            else:
-                try:
-                    newAuth = Authors(name=(title["authors"]["author"]["lastname"]+" "+title["authors"]["author"]["initials"]))
-                except KeyError:
-                    newAuth = Authors(name=(title["authors"]["author"]["lastname"]))
-
-            if not(Authors.objects.filter(name=newAuth.name).exists()):
-                    newAuth.save()
-                    newAuth.article.add(newArt)
 
 
 # for file in glob.iglob('D:/publication/**/spin*.json'):
 #      with open(file, 'r') as data_file:
 #         jdata = json.load(data_file)
 #         spin_Parse(jdata)
-#
-#
+
+
 # for file in glob.iglob('D:/publication/**/scopus*.json'):
 #      with open(file, 'r') as data_file:
 #         jdata = json.load(data_file)
@@ -110,7 +22,14 @@ def spin_Parse(jdata):
 #         jdata = json.load(data_file)
 #         wos_Parse(jdata)
 
-q = Article.objects.exclude(doi__isnull=True)
-dprint(q)
+for file in glob.iglob('D:/publication/newArticles/*.json'):
+     with open(file, 'r') as data_file:
+        jdata = json.load(data_file)
+        dprint(filter1(jdata))
 
-context = {"fields": Article.objects.all()}
+
+# q = Article.objects.exclude(doi__isnull=True)
+# dprint(q)
+
+# context = {"fields": Article.objects.all()}
+
