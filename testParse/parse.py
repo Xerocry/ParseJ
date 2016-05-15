@@ -14,6 +14,33 @@ class Del:
         return self.comp.get(k)
 
 
+def getAuthors(title):
+    print(title)
+    authList = list()
+    try:
+        for pos, data in title["authors"].items():
+            for pos1 in data:
+                authList.append(Authors(name=pos1["name"],
+                               position=pos, scopusId=pos1["scopusId"]))
+    except AttributeError:
+        try:
+            for auth in title["authors"]:
+                authList.append(Authors(name=auth["name"]))
+        except KeyError:
+            for auth1 in title["authors"]["author"]:
+                if isinstance(auth1, dict):
+                    try:
+                        authList.append(Authors(name=auth1["lastname"] + " " + auth1["initials"]))
+                    except KeyError:
+                        authList.append(Authors(name=auth1["lastname"]))
+                else:
+                    try:
+                        authList.append(Authors(name=(title["authors"]["author"]["lastname"] + " " + title["authors"]["author"]["initials"])))
+                    except KeyError:
+                        authList.append(Authors(name=(title["authors"]["author"]["lastname"])))
+    return(authList)
+
+
 def scopus_Parse(jdata):
     for title in jdata:
         try:
@@ -73,7 +100,12 @@ def wos_Parse(jdata):
         except KeyError:
             isbn = None
 
-        newArt = Article.objects.create(ArticleSource="Wos", isbn=isbn, pubDate=tmpDate)
+        try:
+            pages = title["page_range"]
+        except KeyError:
+            pages = None
+
+        newArt = Article.objects.create(ArticleSource="Wos", isbn=isbn, pubDate=tmpDate, pages=parse_pages(pages))
 
         try:
             doi = title["doi"]
@@ -156,8 +188,9 @@ def spin_Parse(jdata):
             newId = IdKeyVal(article=newArt, key="doi", value=doi)
             newId.save()
 
-
 def parse_pages(str):
+    if str is None:
+        return
     DD = Del()
     newStr = str.split("-")
     if len(newStr) > 1:

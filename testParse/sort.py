@@ -1,53 +1,91 @@
 import datetime
 from testParse.dprint import dprint
+from testParse.parse import getAuthors
 
 __author__ = 'user'
 from testParse.models import Article, Authors, IdKeyVal
 
 
 def idSearch(id):
-    haveThis = Article.objects.filter(ids__value=id)
-    if not haveThis:
+    if id == None: #If given id even not None(no id in NewArt) -> next filter
+        return False
+    haveThis = Article.objects.filter(ids__value=id) #Get queryset
+    if not haveThis: #If it's empty
         return False
     else:
-        return haveThis
+        return haveThis #Return queryset with this id
 
 
 def filter1(object):
     for title in object:
-        firstCircle = idSearch(title["doi"])
+        try: #for different source - diff places of doi
+            if isinstance(title["codes"]["code"], dict) and title["codes"]["code"]["type"] == "DOI":
+                doi = title["codes"]["code"]["text"]
+        except KeyError:
+            try:
+                doi = title["doi"]
+            except KeyError:
+                doi = None
+
+        firstCircle = idSearch(doi)
+
         if type(firstCircle) == type(False):
             print("There is no same doi")
             args = dict()
             if "pub_date" in title:
-                args["pubDate"] = title["pub_date"]
+                pubDate = title["pub_date"]
+                # pubDate = dateFilter(firstCircle, title["pub_date"])
             elif "pubDate" in title:
                 try:
-                    args["pubDate"] = datetime.datetime.fromtimestamp(title["pubDate"] / 1e3)
+                    pubDate = datetime.datetime.fromtimestamp(title["pubDate"] / 1e3)
+                    # secondCircle = dateFilter(firstCircle, title["pub_date"])
                 except OSError:
-                    args["pubDate"] = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=(title["pubDate"] / 1000))
+                    pubDate = datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=(title["pubDate"] / 1000))
             elif "yearpubl" in title:
-                args["pubDate"] = datetime.datetime.strptime(title["yearpubl"], "%Y").date()
+                pubDate = datetime.datetime.strptime(title["yearpubl"], "%Y").date()
 
-            
             firstCircle = Article.objects.filter(ArticleSource="Wos")
 
-            secondCircle = filter2(firstCircle, title["pub_date"])
-            dprint(secondCircle)
+            secondCircle = dateFilter(firstCircle, pubDate)
+            dprint(secondCircle) #debug
+            print("~~~~~~~~~~~~~~~~~~~~~~~")
+            authList = getAuthors(title)
+
+            thirdCircle = authorsFilter(secondCircle, authList)
+            dprint(thirdCircle)
         else:
-            print("There is doi - ", title["doi"])
+            print("There is doi - ", title["doi"]) #debug
             return False
-            # dprint(trying)
-            # return True
 
 
-def filter2(queryset, pubDate):
-    for article in queryset.values():
-        print("DATE: ", datetime.datetime.strptime(pubDate, "%Y-%m-%d").date())
-        startdate = article["pubDate"] - datetime.timedelta(1*365/12)
-        enddate = startdate + datetime.timedelta(1*365/12)
-        newSet = queryset.filter(pubDate__range=[startdate, enddate])
-        return newSet
+def dateFilter(queryset, pubDate):
+    print("DATE: ", datetime.datetime.strptime(pubDate, "%Y-%m-%d").date()) #debug
+    startdate = datetime.datetime.strptime(pubDate, "%Y-%m-%d").date() - datetime.timedelta(1*365/12)
+    enddate = datetime.datetime.strptime(pubDate, "%Y-%m-%d").date() + datetime.timedelta(1*365/12)
+    newSet = queryset.filter(pubDate__range=[startdate, enddate])
+    return newSet
+
+def authorsFilter(queryset, authors):
+    if len(authors) == 1:
+        newSet = queryset.filter(authors__name=authors[0])#Q3
+    else:
+        sameCount = dict()
+        for art in queryset.values():
+            for auth in authors:
+                if art.object.get(authors__name__exists=auth): #Q2
+                    # if :
+
+                    # else:
+                    sameCount[art.id] += 1
+
+    return newSet
+
+def pageFilter(queryset, pages):
+    print("Page number: ", pages)
+    startNum = pages - 1
+    endNum = pages+1
+    newSet = queryset.filter(pages__range=[startNum, endNum])
+    return newSet
 
 
 """
