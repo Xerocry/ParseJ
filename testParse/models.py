@@ -17,6 +17,7 @@ class Article(models.Model):
     language = models.CharField(max_length=200, null=True)
     isbn = models.CharField(max_length=200, null=True)
     pages = models.IntegerField(blank=True, null=True)
+    title = models.CharField(max_length=500, null=True)
     # Meta and String
 
 
@@ -29,6 +30,8 @@ class IdKeyVal(models.Model):
 class Authors(models.Model):
     article = models.ManyToManyField(Article, related_name='authors')
     scopusId = models.BigIntegerField(null=True, default=True)
+    spinId = models.CharField(max_length=200, null=True)
+    researcherid = models.CharField(max_length=200, null=True)
     name = models.CharField(max_length=200, null=True)
     position = models.CharField(max_length=200, null=True)
 
