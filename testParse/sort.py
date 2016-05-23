@@ -1,6 +1,5 @@
 import datetime
-import json
-from django.core.serializers.json import DjangoJSONEncoder
+from itertools import chain
 from testParse.dprint import dprint
 from testParse.parse import getAuthors, parse_pages
 
@@ -8,6 +7,7 @@ __author__ = 'user'
 from testParse.models import Article, Authors, IdKeyVal
 from django.db.models import Count
 from django.db.models import Q
+from fuzzywuzzy import fuzz
 
 
 def idSearch(id):
@@ -20,7 +20,40 @@ def idSearch(id):
         return haveThis  # Return queryset with this id
 
 
-def filter1(object, source):
+def testFilter(object, source):
+    try:
+        doi = IdKeyVal.objects.get(article=object.id, key="doi")
+    except IdKeyVal.DoesNotExist:
+        doi = None
+    tmpDate = object.pubDate
+    titleEn = object.title
+    authList = list()
+    for d in Authors.objects.filter(article=object.id):
+        authList.append(d)
+
+    pages = object.pages
+
+    # firstCircle = idSearch(doi)
+
+    # if type(firstCircle) == type(False):
+    firstCircle = Article.objects.all()
+
+    secondCircle = dateFilter(firstCircle, tmpDate)
+
+    thirdCircle = authorsFilter(secondCircle, authList)
+
+    forthCircle = pageFilter(thirdCircle, pages)
+
+    fifthCircle = titleFilter(forthCircle, titleEn)
+
+    return fifthCircle
+
+    # else:
+    # print("There is doi - ", doi)  # debug
+    #     return False
+
+
+def filterJdata(object, source):
     for title in object:
         if (source == "Wos"):
             tmpDate = datetime.datetime.strptime(title["pub_date"], "%Y-%m-%d").date()
@@ -87,16 +120,17 @@ def filter1(object, source):
             # dprint(secondCircle) #debug
             print("~~~~~~~~~~~~~~~~~~~~~~~")
             authList = getAuthors(title)
-            [thirdCircle, sameIdCount, sameCount] = authorsFilter(secondCircle, authList)
+            [thirdCircle, sameCount] = authorsFilter(secondCircle, authList)
 
             # dprint(thirdCircle)
             forthCircle = pageFilter(thirdCircle, pages)
             print("~~~~~~~~~~+++++++++++++~~~~~~~~~~~~~~")
-            dprint(forthCircle)
+            # dprint(forthCircle)
             fifthCircle = titleFilter(forthCircle, titleEn)
 
             print("~~~~~~~~~~+++++++++++++~~~~~~~~~~~~~~")
-            dprint(fifthCircle)
+            # dprint(fifthCircle)
+            return fifthCircle
 
         else:
             print("There is doi - ", title["doi"])  # debug
@@ -104,7 +138,9 @@ def filter1(object, source):
 
 
 def dateFilter(queryset, pubDate):
-    print("DATE: ", pubDate)  # debug
+    # print("DATE: ", pubDate)  # debug
+    if (pubDate == None):
+        return queryset
     startdate = pubDate - datetime.timedelta(1 * 365 / 12)
     enddate = pubDate + datetime.timedelta(1 * 365 / 12)
     newSet = queryset.filter(Q(pubDate__range=[startdate, enddate]) | Q(pubDate__isnull=True))
@@ -117,25 +153,21 @@ def authorsFilter(queryset, authors):
     else:
         newSet = queryset.annotate(auth_count=Count('authors')).filter(auth_count__exact=len(authors))
         sameCount = dict()
-        sameIdCount = dict()
         for art in newSet.values():  # Loop for queryset
-            sameIdCount[art["id"]] = 0
             sameCount[art["id"]] = 0
             data = Authors.objects.filter(article=art["id"])  # get authors of cur article from queryset
             for auth in authors:  # loop for given authors
                 for d in data.values():  # loop for authors from cur article from queryset
                     if d["name"].split(" ", 1)[0] == auth.name.split(" ", 1)[0]:
-                        if not (d["scopusId"] == 1) or not (d["researcherid"] == None) or not (d["spinId"] == None):
-                            if d["scopusId"] in auth.getId() or d["resarcherid"] in auth.getId():
-                                sameIdCount[art["id"]] += 1
-                        else:
-                            sameCount[art["id"]] += 1
-                            # print("SameId = ", sameIdCount[art["id"]], " / Same = ", sameCount[art["id"]])
-    return [newSet, sameCount, sameIdCount]
+                        sameCount[art["id"]] += 1
+
+    return newSet
 
 
 def pageFilter(queryset, pages):
-    print("Page number: ", pages)
+    if (pages == None):
+        return queryset
+    # print("Page number: ", pages)
     startNum = pages - 1
     endNum = pages + 1
     newSet = queryset.filter(Q(pages__range=[startNum, endNum]) | Q(pages__isnull=True))
@@ -143,9 +175,12 @@ def pageFilter(queryset, pages):
 
 
 def titleFilter(queryset, title):
-    print("Article Title: ", title)
-    newSet = queryset.filter(title=title)  # Add lowercase and fuzzy search
-    # print(title.lower())
+    my_obj_list = list()
+    for data in queryset:
+        if (fuzz.ratio(title.lower(), data.title.lower()) >= 70):
+            my_obj_list.append(data)
+    none_qs = Article.objects.none()
+    newSet = list(chain(none_qs, my_obj_list))
     return newSet
 
 

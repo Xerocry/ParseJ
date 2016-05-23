@@ -1,20 +1,12 @@
 import datetime
-from pprint import pprint
-import re
 import string
-from testParse import dprint
 from testParse.models import Article, Authors, IdKeyVal
 
 
 class Author:
-    pos = "This shape has not been described yet"
+    pos = ""
     id = list()
-    name = "Nobody has claimed to make this shape yet"
-
-    # def __init__(self, name, pos, id):
-    # self.name = name
-    #     self.pos = pos
-    #     self.id = id
+    name = ""
 
     def getName(self):
         return self.name
@@ -50,20 +42,20 @@ def getAuthors(title):
             for pos1 in data:
                 newAuth = Author()
                 newAuth.setName(pos1["name"])
-                newAuth.setId(pos1["scopusId"])
-                newAuth.setId(pos1["researcherId"])
-                newAuth.setId(pos1["spinAuthorId"])
-                newAuth.setPos(pos)
+                # newAuth.setId(pos1["scopusId"])
+                # newAuth.setId(pos1["researcherId"])
+                # newAuth.setId(pos1["spinAuthorId"])
+                # newAuth.setPos(pos)
                 authList.append(newAuth)
     except AttributeError:
         try:  # Wos
             for auth in title["authors"]:
                 newAuth = Author()
                 newAuth.setName(auth["name"])
-                try:
-                    newAuth.setId(auth["researcher_id"])
-                except KeyError:
-                    pass
+                # try:
+                #     newAuth.setId(auth["researcher_id"])
+                # except KeyError:
+                #     pass
                 authList.append(newAuth)
         except KeyError:  # Spin
             for auth1 in title["authors"]["author"]:
@@ -98,7 +90,7 @@ def scopus_Parse(jdata):
 
         newArt = Article.objects.create(ArticleSource="Scopus", pubDate=tmpDate,
                                         language=title["language"],
-                                        sourceType=title["sourceType"], pages=parse_pages(pages),
+                                        pages=parse_pages(pages),
                                         title=title["titleEn"])
         newArt.save()
 
@@ -133,16 +125,17 @@ def scopus_Parse(jdata):
 
         for pos, data in title["authors"].items():
             for pos1 in data:
-                # try:
-                #     id = pos1["researcherId"]
-                # except KeyError:
-                #     id = None
+                try:
+                    id = pos1["researcherId"]
+                except KeyError:
+                    id = None
 
-                auth = Authors(name=pos1["name"],
-                               position=pos, scopusId=pos1["scopusId"], spinId=pos1["spinAuthorId"], researcherid=pos1["researcherId"])
+                # auth = Authors(name=pos1["name"],
+                #                position=pos, scopusId=pos1["scopusId"], spinId=pos1["spinAuthorId"], researcherid=pos1["researcherId"])
 
-                if not (Authors.objects.filter(name=pos1["name"], scopusId=pos1["scopusId"],
-                                               spinId=pos1["spinAuthorId"], researcherid=pos1["researcherId"]).exists()):
+                auth = Authors(name=pos1["name"], researcherid=id)
+
+                if not (Authors.objects.filter(name=pos1["name"], researcherid=id).exists()):
                     auth.save()
                     auth.article.add(newArt)
 
@@ -184,11 +177,12 @@ def wos_Parse(jdata):
             pass
 
         for auth in title["authors"]:
-            try:
-                id = auth["researcher_id"]
-            except KeyError:
-                id = None
-            newAuth = Authors(name=auth["name"], researcherid=id)
+            # try:
+            #     id = auth["researcher_id"]
+            # except KeyError:
+            #     id = None
+            # newAuth = Authors(name=auth["name"], researcherid=id)
+            newAuth = Authors(name=auth["name"])
             if not (Authors.objects.filter(name=auth["name"]).exists()):
                 newAuth.save()
                 newAuth.article.add(newArt)
@@ -258,6 +252,9 @@ def spin_Parse(jdata):
                 newAuth.save()
                 newAuth.article.add(newArt)
 
+        if not(title["id"] is None):
+            newId = IdKeyVal(article=newArt, key="SpinId", value=title["id"])
+            newId.save()
         if not (doi is None):
             newId = IdKeyVal(article=newArt, key="doi", value=doi)
             newId.save()
