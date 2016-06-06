@@ -1,5 +1,8 @@
 import datetime
+from pprint import pprint
+import re
 import string
+from testParse import dprint
 from testParse.models import Article, Authors, IdKeyVal
 
 
@@ -42,20 +45,12 @@ def getAuthors(title):
             for pos1 in data:
                 newAuth = Author()
                 newAuth.setName(pos1["name"])
-                # newAuth.setId(pos1["scopusId"])
-                # newAuth.setId(pos1["researcherId"])
-                # newAuth.setId(pos1["spinAuthorId"])
-                # newAuth.setPos(pos)
                 authList.append(newAuth)
     except AttributeError:
         try:  # Wos
             for auth in title["authors"]:
                 newAuth = Author()
                 newAuth.setName(auth["name"])
-                # try:
-                #     newAuth.setId(auth["researcher_id"])
-                # except KeyError:
-                #     pass
                 authList.append(newAuth)
         except KeyError:  # Spin
             for auth1 in title["authors"]["author"]:
@@ -88,10 +83,13 @@ def scopus_Parse(jdata):
         except KeyError:
             pages = None
 
+        sourceType = title["sourceType"]
+
         newArt = Article.objects.create(ArticleSource="Scopus", pubDate=tmpDate,
                                         language=title["language"],
                                         pages=parse_pages(pages),
-                                        title=title["titleEn"])
+                                        title=title["titleEn"],
+                                        sourceType=sourceType)
         newArt.save()
 
         try:
@@ -130,9 +128,6 @@ def scopus_Parse(jdata):
                 except KeyError:
                     id = None
 
-                # auth = Authors(name=pos1["name"],
-                #                position=pos, scopusId=pos1["scopusId"], spinId=pos1["spinAuthorId"], researcherid=pos1["researcherId"])
-
                 auth = Authors(name=pos1["name"], researcherid=id)
 
                 if not (Authors.objects.filter(name=pos1["name"], researcherid=id).exists()):
@@ -159,8 +154,13 @@ def wos_Parse(jdata):
         except KeyError:
             pages = None
 
+        try:
+            sourceType = title["journal_title"]
+        except KeyError:
+            sourceType = None
+
         newArt = Article.objects.create(ArticleSource="Wos", isbn=isbn, pubDate=tmpDate, pages=parse_pages(pages),
-                                        language=lang, title=title["title_en"])
+                                        language=lang, title=title["title_en"], sourceType=sourceType)
 
         try:
             doi = title["doi"]
@@ -177,11 +177,6 @@ def wos_Parse(jdata):
             pass
 
         for auth in title["authors"]:
-            # try:
-            #     id = auth["researcher_id"]
-            # except KeyError:
-            #     id = None
-            # newAuth = Authors(name=auth["name"], researcherid=id)
             newAuth = Authors(name=auth["name"])
             if not (Authors.objects.filter(name=auth["name"]).exists()):
                 newAuth.save()
@@ -225,13 +220,11 @@ def spin_Parse(jdata):
 
         try:
             if isinstance(title["titles"]["title"], list):
-                # print(title["titles"]["title"])
                 titleEn = title["titles"]["title"][0]["text"]
             else:
                 titleEn = title["titles"]["title"]["text"]
         except KeyError:
             titleEn = None
-
 
         newArt = Article.objects.create(ArticleSource="Spin", isbn=isbn, language=lang, pubDate=tmpDate, pages=pages,
                                         title=titleEn)
@@ -252,7 +245,7 @@ def spin_Parse(jdata):
                 newAuth.save()
                 newAuth.article.add(newArt)
 
-        if not(title["id"] is None):
+        if not (title["id"] is None):
             newId = IdKeyVal(article=newArt, key="SpinId", value=title["id"])
             newId.save()
         if not (doi is None):
@@ -269,11 +262,20 @@ def parse_pages(str):
         try:
             newStr[0] = newStr[0].translate(DD)
             newStr[1] = newStr[1].translate(DD)
+            if int(newStr[1]) - int(newStr[0]) >= 100 or int(newStr[1]) - int(newStr[0]) < 0:
+                return None
             return int(newStr[1]) - int(newStr[0])
         except ValueError:
-            return roman_to_arabic(newStr[1]) - roman_to_arabic(newStr[0])
+            if newStr[1].isdigit():
+                return int(newStr[1]) - roman_to_arabic(newStr[0])
+            elif newStr[0].isdigit():
+                return roman_to_arabic(newStr[1]) - int(newStr[0])
+            else:
+                return roman_to_arabic(newStr[1]) - roman_to_arabic(newStr[0])
+
     else:
         return 1
+
 
 rule_add = {
     'I': 1,

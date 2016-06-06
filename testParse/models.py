@@ -55,6 +55,7 @@ from django.db.models import QuerySet, Expression
 
 class Article(models.Model):
     ArticleSource = models.CharField(max_length=200, null=True)  # scopus - wos - spin
+    sourceType = models.CharField(max_length=200, null=True)
     pubDate = models.DateField(default=datetime.now, blank=True, null=True)
     language = models.CharField(max_length=200, null=True)
     isbn = models.CharField(max_length=200, null=True)
